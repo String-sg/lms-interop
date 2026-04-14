@@ -72,7 +72,7 @@ Two roles managed via `publicMetadata.role`:
 - `creator` — Access to `/studio/*`, can create/edit modules, import PDFs
 - `learner` (default) — Read modules, track progress, take notes
 
-Role gate is enforced in `proxy.ts` (Next.js 16 middleware). The `/studio/*` routes and `/api/modules`, `/api/ocr` endpoints require `role: "creator"`.
+Role gate must be enforced in `middleware.ts` (the Next.js middleware entrypoint), not `proxy.ts`. The `/studio/*` routes and `/api/modules`, `/api/ocr` endpoints should require `role: "creator"` only once that middleware is mounted under the correct filename.
 
 To make someone a creator: Clerk Dashboard → Users → select user → Public Metadata → `{ "role": "creator" }`.
 
