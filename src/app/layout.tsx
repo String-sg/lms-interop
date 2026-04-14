@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/sonner";
@@ -32,7 +33,9 @@ export default function RootLayout({
       >
         <body className="bg-background text-foreground min-h-dvh flex flex-col">
           <main className="flex-1 pb-20">{children}</main>
-          <BottomNav />
+          <Suspense fallback={null}>
+            <BottomNav />
+          </Suspense>
           <Toaster position="top-center" />
         </body>
       </html>
