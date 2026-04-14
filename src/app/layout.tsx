@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/sonner";
@@ -25,17 +26,21 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <ClerkProvider>
-      <html
-        lang="en"
-        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
-      >
-        <body className="bg-background text-foreground min-h-dvh flex flex-col">
-          <main className="flex-1 pb-20">{children}</main>
-          <BottomNav />
-          <Toaster position="top-center" />
-        </body>
-      </html>
-    </ClerkProvider>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+    >
+      <body className="bg-background text-foreground min-h-dvh flex flex-col">
+        <Suspense fallback={null}>
+          <ClerkProvider dynamic>
+            <main className="flex-1 pb-20">{children}</main>
+            <Suspense fallback={null}>
+              <BottomNav />
+            </Suspense>
+          </ClerkProvider>
+        </Suspense>
+        <Toaster position="top-center" />
+      </body>
+    </html>
   );
 }
