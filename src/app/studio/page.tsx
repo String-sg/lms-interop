@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db/client";
 import { modules } from "@/db/schema";
@@ -6,15 +7,16 @@ import { desc } from "drizzle-orm";
 import { isCreator } from "@/lib/auth";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Upload, Plus } from "lucide-react";
 
-export default async function StudioPage() {
+async function StudioContent() {
   if (!(await isCreator())) redirect("/");
   const db = getDb();
   const rows = await db.select().from(modules).orderBy(desc(modules.updatedAt));
 
   return (
-    <div className="mx-auto max-w-2xl p-4">
+    <>
       <header className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Studio</h1>
         <div className="flex gap-2">
@@ -46,6 +48,24 @@ export default async function StudioPage() {
           </Card>
         )}
       </ul>
+    </>
+  );
+}
+
+export default function StudioPage() {
+  return (
+    <div className="mx-auto max-w-2xl p-4">
+      <Suspense
+        fallback={
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        }
+      >
+        <StudioContent />
+      </Suspense>
     </div>
   );
 }
