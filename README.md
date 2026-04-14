@@ -61,4 +61,3 @@ completion, scroll-%, reading time, and highlight/note tracking per learner.
 MDX exports/diffs like plain .md but enables embedded components (callouts,
 quizzes, video) without sidecar JSON. Avoid MDX-only syntax in modules you want
 to edit in Obsidian itself.
-# lms-interop
