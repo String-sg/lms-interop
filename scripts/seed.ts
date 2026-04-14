@@ -1,11 +1,20 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
+import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import matter from "gray-matter";
 import * as schema from "../src/db/schema";
 import { slugify } from "../src/lib/slug";
 import { extractWikilinks } from "../src/lib/mdx/wikilinks";
+import { putMdx } from "../src/lib/blob";
 
-const sql = neon(process.env.DATABASE_URL!);
+const dbUrl = process.env.DATABASE_URL;
+if (!dbUrl) {
+  console.error("Error: DATABASE_URL environment variable is not set.");
+  process.exit(1);
+}
+
+const sql = neon(dbUrl);
 const db = drizzle(sql, { schema });
 
 const CREATOR_ID = process.env.SEED_USER_ID || "seed-creator";
@@ -201,33 +210,68 @@ async function seed() {
   console.log("Seeding modules...");
 
   for (const mod of seedModules) {
-    const id = nanoid();
     const slug = slugify(mod.title);
 
-    // For seed, we store a placeholder blob URL (content is in the DB for dev)
-    // In production, this would be a real Blob URL
-    const fakeBlobUrl = `https://placeholder.blob.vercel-storage.com/modules/${slug}.mdx`;
-
-    await db.insert(schema.modules).values({
-      id,
-      slug,
+    // Build frontmatter block and upload the full MDX to blob storage
+    const parsedFm = matter(mod.markdown).data;
+    const mergedFm = {
       title: mod.title,
       tags: mod.tags,
-      mdxBlobUrl: fakeBlobUrl,
-      frontmatter: { title: mod.title, tags: mod.tags },
-      createdBy: CREATOR_ID,
-      updatedAt: new Date(),
-    }).onConflictDoNothing();
+      ...parsedFm,
+      updatedAt: new Date().toISOString(),
+    };
+    const fmBlock =
+      "---\n" +
+      Object.entries(mergedFm)
+        .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+        .join("\n") +
+      "\n---\n\n";
+    const fullMdx = fmBlock + matter(mod.markdown).content;
 
-    // Extract and insert wikilinks
+    const mdxBlobUrl = await putMdx(slug, fullMdx);
+
+    // Upsert the module (keyed on slug) so re-runs stay idempotent
+    await db
+      .insert(schema.modules)
+      .values({
+        id: nanoid(),
+        slug,
+        title: mod.title,
+        tags: mod.tags,
+        mdxBlobUrl,
+        frontmatter: mergedFm,
+        createdBy: CREATOR_ID,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: schema.modules.slug,
+        set: {
+          title: mod.title,
+          tags: mod.tags,
+          mdxBlobUrl,
+          frontmatter: mergedFm,
+          updatedAt: new Date(),
+        },
+      });
+
+    // Resolve the actual module ID (may differ from the nanoid above if the
+    // row already existed and onConflictDoUpdate kept the original id).
+    const rows = await db
+      .select({ id: schema.modules.id })
+      .from(schema.modules)
+      .where(eq(schema.modules.slug, slug))
+      .limit(1);
+    if (!rows[0]) throw new Error(`Module with slug "${slug}" not found after upsert`);
+    const moduleId = rows[0].id;
+
+    // Replace wikilinks for this module
     const links = extractWikilinks(mod.markdown);
+    await db.delete(schema.moduleLinks).where(eq(schema.moduleLinks.fromId, moduleId));
     if (links.length > 0) {
-      await db.delete(schema.moduleLinks).where(
-        require("drizzle-orm").eq(schema.moduleLinks.fromId, id)
-      );
-      await db.insert(schema.moduleLinks).values(
-        links.map((l) => ({ fromId: id, toSlug: l.slug, label: l.label }))
-      ).onConflictDoNothing();
+      await db
+        .insert(schema.moduleLinks)
+        .values(links.map((l) => ({ fromId: moduleId, toSlug: l.slug, label: l.label })))
+        .onConflictDoNothing();
     }
 
     console.log(`  ✓ ${mod.title} (${links.length} links)`);
