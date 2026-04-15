@@ -9,6 +9,7 @@ import { fetchText } from "@/lib/blob";
 import { RenderMdx } from "@/lib/mdx/render";
 import { ReaderClient } from "@/components/reader/reader-client";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 async function getModuleBySlug(slug: string) {
   "use cache";
@@ -21,7 +22,7 @@ async function getModuleBySlug(slug: string) {
   return { row, raw };
 }
 
-async function Reader({ moduleId }: { moduleId: string }) {
+async function ReaderProgress({ moduleId }: { moduleId: string }) {
   const { userId } = await auth();
   if (!userId) return null;
   const db = getDb();
@@ -39,12 +40,7 @@ async function Reader({ moduleId }: { moduleId: string }) {
   );
 }
 
-export default async function ModulePage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
+async function ModuleContent({ slug }: { slug: string }) {
   const result = await getModuleBySlug(slug);
   if (!result) notFound();
   const { row, raw } = result;
@@ -67,8 +63,30 @@ export default async function ModulePage({
       <RenderMdx source={raw} moduleId={row.id} />
 
       <Suspense fallback={null}>
-        <Reader moduleId={row.id} />
+        <ReaderProgress moduleId={row.id} />
       </Suspense>
     </div>
+  );
+}
+
+export default async function ModulePage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-2xl p-4 space-y-4">
+          <Skeleton className="h-8 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      }
+    >
+      <ModuleContent slug={slug} />
+    </Suspense>
   );
 }

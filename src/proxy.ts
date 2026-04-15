@@ -1,4 +1,4 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware, clerkClient, createRouteMatcher } from "@clerk/nextjs/server";
 
 const isStudio = createRouteMatcher(["/studio(.*)", "/api/modules(.*)", "/api/ocr(.*)"]);
 const isPublic = createRouteMatcher([
@@ -8,12 +8,14 @@ const isPublic = createRouteMatcher([
 
 export default clerkMiddleware(async (auth, req) => {
   if (isPublic(req)) return;
-  const { userId, sessionClaims, redirectToSignIn } = await auth();
+  const { userId, redirectToSignIn } = await auth();
 
   if (!userId) return redirectToSignIn();
 
   if (isStudio(req)) {
-    const role = (sessionClaims?.publicMetadata as { role?: string } | undefined)?.role;
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId);
+    const role = (user.publicMetadata as { role?: string })?.role;
     if (role !== "creator") {
       return Response.redirect(new URL("/", req.url));
     }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
@@ -6,6 +7,7 @@ import { getDb } from "@/db/client";
 import { modules, progress, notes, quizResponses } from "@/db/schema";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function fmtTime(ms: number) {
   const s = Math.round(ms / 1000);
@@ -15,7 +17,7 @@ function fmtTime(ms: number) {
   return `${Math.round(m / 60)}h ${m % 60}m`;
 }
 
-export default async function RecordsPage() {
+async function RecordsContent() {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
@@ -68,9 +70,7 @@ export default async function RecordsPage() {
     .limit(50);
 
   return (
-    <div className="mx-auto max-w-2xl p-4">
-      <h1 className="mb-4 text-2xl font-semibold tracking-tight">Records</h1>
-
+    <>
       <h2 className="mb-2 text-sm font-medium text-muted-foreground">Progress</h2>
       <ul className="grid gap-2">
         {rows.map((r) => (
@@ -119,7 +119,6 @@ export default async function RecordsPage() {
           <Card className="p-6 text-center text-muted-foreground">No notes yet.</Card>
         )}
       </ul>
-
       <h2 className="mt-8 mb-2 text-sm font-medium text-muted-foreground">Quiz attempts</h2>
       <ul className="grid gap-2">
         {myQuizAttempts.map((q) => (
@@ -143,6 +142,25 @@ export default async function RecordsPage() {
           <Card className="p-6 text-center text-muted-foreground">No quiz attempts yet.</Card>
         )}
       </ul>
+    </>
+  );
+}
+
+export default function RecordsPage() {
+  return (
+    <div className="mx-auto max-w-2xl p-4">
+      <h1 className="mb-4 text-2xl font-semibold tracking-tight">Records</h1>
+      <Suspense
+        fallback={
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 w-full" />
+            ))}
+          </div>
+        }
+      >
+        <RecordsContent />
+      </Suspense>
     </div>
   );
 }
