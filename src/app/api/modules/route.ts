@@ -83,9 +83,9 @@ export async function POST(req: Request) {
         .values(links.map((l) => ({ fromId: id, toSlug: l.slug, label: l.label })));
     }
 
-    revalidateTag("modules-list");
-    revalidateTag(`module:${slug}`);
-    revalidateTag("graph");
+    revalidateTag("modules-list", "max");
+    revalidateTag(`module:${slug}`, "max");
+    revalidateTag("graph", "max");
 
     return NextResponse.json({ id, slug, mdxBlobUrl: blobUrl });
   } catch (err) {
