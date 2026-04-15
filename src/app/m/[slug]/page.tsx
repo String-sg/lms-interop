@@ -60,7 +60,7 @@ async function ModuleContent({ slug }: { slug: string }) {
         )}
       </header>
 
-      <RenderMdx source={raw} />
+      <RenderMdx source={raw} moduleId={row.id} />
 
       <Suspense fallback={null}>
         <ReaderProgress moduleId={row.id} />

@@ -2,6 +2,8 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
 import matter from "gray-matter";
 import { wikilinksToMarkdownLinks } from "./wikilinks";
+import { ModuleProvider } from "./module-context";
+import { Quiz } from "@/components/reader/quiz";
 import Link from "next/link";
 import Image from "next/image";
 import type { ComponentProps } from "react";
@@ -31,6 +33,7 @@ const components = {
       {children}
     </div>
   ),
+  Quiz,
 };
 
 export function parseFrontmatter(raw: string) {
@@ -38,17 +41,28 @@ export function parseFrontmatter(raw: string) {
   return { frontmatter: data as Record<string, unknown>, body: content };
 }
 
-export async function RenderMdx({ source }: { source: string }) {
+export async function RenderMdx({
+  source,
+  moduleId,
+}: {
+  source: string;
+  moduleId: string;
+}) {
   const { body } = parseFrontmatter(source);
   const transformed = wikilinksToMarkdownLinks(body);
   return (
-    <article className="prose prose-zinc dark:prose-invert max-w-none prose-headings:scroll-mt-20">
-      <MDXRemote
-        source={transformed}
-        components={components}
-        options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }}
-      />
-    </article>
+    <ModuleProvider moduleId={moduleId}>
+      <article
+        data-module-id={moduleId}
+        className="prose prose-zinc dark:prose-invert max-w-none prose-headings:scroll-mt-20"
+      >
+        <MDXRemote
+          source={transformed}
+          components={components}
+          options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }}
+        />
+      </article>
+    </ModuleProvider>
   );
 }
 
