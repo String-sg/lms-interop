@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { modules, progress, notes } from "@/db/schema";
+import { modules, progress, notes, quizResponses } from "@/db/schema";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -49,6 +49,22 @@ export default async function RecordsPage() {
     .innerJoin(modules, eq(notes.moduleId, modules.id))
     .where(eq(notes.userId, userId))
     .orderBy(desc(notes.createdAt))
+    .limit(50);
+
+  const myQuizAttempts = await db
+    .select({
+      id: quizResponses.id,
+      quizId: quizResponses.quizId,
+      selected: quizResponses.selected,
+      correct: quizResponses.correct,
+      attemptedAt: quizResponses.attemptedAt,
+      title: modules.title,
+      slug: modules.slug,
+    })
+    .from(quizResponses)
+    .innerJoin(modules, eq(quizResponses.moduleId, modules.id))
+    .where(eq(quizResponses.userId, userId))
+    .orderBy(desc(quizResponses.attemptedAt))
     .limit(50);
 
   return (
@@ -101,6 +117,30 @@ export default async function RecordsPage() {
         })}
         {myNotes.length === 0 && (
           <Card className="p-6 text-center text-muted-foreground">No notes yet.</Card>
+        )}
+      </ul>
+
+      <h2 className="mt-8 mb-2 text-sm font-medium text-muted-foreground">Quiz attempts</h2>
+      <ul className="grid gap-2">
+        {myQuizAttempts.map((q) => (
+          <li key={q.id}>
+            <Link href={`/m/${q.slug}`}>
+              <Card className="p-4 flex items-center justify-between gap-3 hover:bg-accent/40 transition-colors">
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{q.title}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    Quiz <code>{q.quizId}</code> · {new Date(q.attemptedAt).toLocaleString()}
+                  </div>
+                </div>
+                <Badge variant={q.correct ? "default" : "outline"}>
+                  {q.correct ? "Correct" : "Incorrect"}
+                </Badge>
+              </Card>
+            </Link>
+          </li>
+        ))}
+        {myQuizAttempts.length === 0 && (
+          <Card className="p-6 text-center text-muted-foreground">No quiz attempts yet.</Card>
         )}
       </ul>
     </div>

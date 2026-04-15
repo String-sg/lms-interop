@@ -64,7 +64,7 @@ export default async function ModulePage({
         )}
       </header>
 
-      <RenderMdx source={raw} />
+      <RenderMdx source={raw} moduleId={row.id} />
 
       <Suspense fallback={null}>
         <Reader moduleId={row.id} />

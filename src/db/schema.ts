@@ -4,6 +4,7 @@ import {
   timestamp,
   integer,
   jsonb,
+  boolean,
   primaryKey,
   index,
 } from "drizzle-orm/pg-core";
@@ -96,6 +97,29 @@ export const uploads = pgTable("uploads", {
     .notNull()
     .defaultNow(),
 });
+
+export const quizResponses = pgTable(
+  "quiz_responses",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    moduleId: text("module_id")
+      .notNull()
+      .references(() => modules.id, { onDelete: "cascade" }),
+    quizId: text("quiz_id").notNull(), // creator-authored id, scoped to module
+    selected: integer("selected").notNull(),
+    correct: boolean("correct").notNull(),
+    attemptedAt: timestamp("attempted_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    userModuleIdx: index("quiz_responses_user_module_idx").on(
+      t.userId,
+      t.moduleId,
+    ),
+  }),
+);
 
 export const modulesRelations = relations(modules, ({ many }) => ({
   links: many(moduleLinks),
